@@ -1,0 +1,11 @@
+# build directories
+out*
+build*
+
+# IDE config directories
+.vs
+.vscode
+.idea
+
+# config files
+*.ini
