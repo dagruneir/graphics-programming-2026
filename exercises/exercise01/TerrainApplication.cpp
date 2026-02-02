@@ -1,7 +1,4 @@
 #include "TerrainApplication.h"
-
-// (todo) 01.1: Include the libraries you need
-
 #include <cmath>
 #include <iostream>
 
@@ -42,19 +39,37 @@ void TerrainApplication::Initialize()
     // Build shaders and store in m_shaderProgram
     BuildShaders();
 
-    // (todo) 01.1: Create containers for the vertex position
+    std::vector<Vector3> positions;
 
+    for (int y = 0; y <= m_gridY; y++)
+    {
+        for (int x = 0; x <= m_gridX; x++)
+        {
+            Vector3 bottomLeft = Vector3(x, y, 0);
+            Vector3 bottomRight = Vector3(x + 1, y, 0);
+            Vector3 topLeft = Vector3(x, y + 1, 0);
+            Vector3 topRight = Vector3(x + 1, y + 1, 0);
 
-    // (todo) 01.1: Fill in vertex data
+            positions.push_back(topLeft);
+            positions.push_back(bottomLeft);
+            positions.push_back(topRight);
+            positions.push_back(topRight);
+            positions.push_back(bottomLeft);
+            positions.push_back(bottomRight);
+        }
+    }
 
-
-    // (todo) 01.1: Initialize VAO, and VBO
+    VAO.Bind();
+    VBO.Bind();
+    VBO.AllocateData<Vector3>(positions);
+    VertexAttribute position(Data::Type::Float, 3);
+    VAO.SetAttribute(0, position, 0);
 
 
     // (todo) 01.5: Initialize EBO
 
-
-    // (todo) 01.1: Unbind VAO, and VBO
+    VAO.Unbind();
+    VBO.Unbind();
 
 
     // (todo) 01.5: Unbind EBO
@@ -78,7 +93,8 @@ void TerrainApplication::Render()
     // Set shader to be used
     glUseProgram(m_shaderProgram);
 
-    // (todo) 01.1: Draw the grid
+    VAO.Bind();
+    glDrawArrays(GL_TRIANGLES, 0, (m_gridX + 1) * (m_gridY + 1));
 
 }
 
