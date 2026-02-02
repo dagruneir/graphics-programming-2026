@@ -1,5 +1,9 @@
 #include <ituGL/core/DeviceGL.h>
 #include <ituGL/application/Window.h>
+#include <ituGL/geometry/VertexBufferObject.h>
+#include <ituGL/geometry/VertexArrayObject.h>
+#include <ituGL/geometry/VertexAttribute.h>
+#include <ituGL/geometry/ElementBufferObject.h>
 #include <iostream>
 
 int buildShaderProgram();
@@ -7,7 +11,7 @@ void processInput(GLFWwindow* window);
 
 // settings
 const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
+const unsigned int SCR_HEIGHT = 800;
 
 int main()
 {
@@ -41,29 +45,42 @@ int main()
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
     float vertices[] = {
-        -0.5f, -0.5f, 0.0f, // left  
-         0.5f, -0.5f, 0.0f, // right 
-         0.0f,  0.5f, 0.0f  // top   
+        // -0.5f, -0.5f, 0.0f, // bottom left  
+        //  0.5f, -0.5f, 0.0f, // bottom right 
+        //  0.5f,  0.5f, 0.0f,  // top right
+        // -0.5f, 0.5f, 0.0f, // top left  
+
+
+        //creating a circle
+        0.0f,  0.0f, 0.0f, // center point
     };
 
-    unsigned int VBO, VAO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
-    glBindVertexArray(VAO);
+    unsigned int indices[] = {
+        0, 1, 2,   // first triangle
+        2, 0, 3    // second triangle
+    };
 
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    VertexBufferObject vbo;
+    VertexArrayObject vao;
+    ElementBufferObject ebo;
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
+    //float time = 0.0f;
+    //const float rotationSpeed = 1.0f;
+    //const float length = std::sqrt(2.0f) / 2.0f;
 
-    // note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    vao.Bind();
+    vbo.Bind();
+    ebo.Bind();
 
-    // You can unbind the VAO afterwards so other VAO calls won't accidentally modify this VAO, but this rarely happens. Modifying other
-    // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
-    glBindVertexArray(0);
+    ebo.AllocateData<unsigned int>(indices);
+    vbo.AllocateData<float>(vertices);
+
+    VertexAttribute position = VertexAttribute(Data::Type::Float, 3);
+    vao.SetAttribute(0, position, 0);
+
+    vbo.Unbind();
+    vao.Unbind();
+    ebo.Unbind();
 
 
     // uncomment this call to draw in wireframe polygons.
@@ -83,9 +100,22 @@ int main()
 
         // draw our first triangle
         glUseProgram(shaderProgram);
-        glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        vao.Bind();
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         // glBindVertexArray(0); // no need to unbind it every time 
+
+        /*         time += 0.01f;
+        float angle = time * rotationSpeed;
+
+        for (int i = 0; i < 4; ++i)
+        {
+            vertices[i * 3 + 0] = std::sin(angle + i * M_PI / 2.0f)*length;
+            vertices[i * 3 + 1] = std::cos(angle + i * M_PI / 2.0f)*length;
+        }
+
+        vbo.Bind();
+        vbo.UpdateData<float>(vertices);
+        vbo.Unbind(); */
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -95,8 +125,6 @@ int main()
 
     // optional: de-allocate all resources once they've outlived their purpose:
     // ------------------------------------------------------------------------
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
     glDeleteProgram(shaderProgram);
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
