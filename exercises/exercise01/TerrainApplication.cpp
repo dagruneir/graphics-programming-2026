@@ -2,6 +2,9 @@
 #include <cmath>
 #include <iostream>
 
+#define STB_PERLIN_IMPLEMENTATION
+#include <stb_perlin.h>
+
 // Helper structures. Declared here only for this exercise
 struct Vector2
 {
@@ -23,12 +26,18 @@ struct Vector3
     }
 };
 
-// (todo) 01.8: Declare an struct with the vertex format
+struct Vertex
+{
+    Vector3 position;
+    Vector2 texCoord;
+    Vector3 color;
+    Vector3 normal;
+};
 
 
 
 TerrainApplication::TerrainApplication()
-    : Application(1024, 1024, "Terrain demo"), m_gridX(16), m_gridY(16), m_shaderProgram(0)
+    : Application(1024, 1024, "Terrain demo"), m_gridX(80), m_gridY(80), m_shaderProgram(0)
 {
 }
 
@@ -36,43 +45,170 @@ void TerrainApplication::Initialize()
 {
     Application::Initialize();
 
+    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
     // Build shaders and store in m_shaderProgram
     BuildShaders();
 
-    std::vector<Vector3> positions;
+    //std::vector<Vector3> positions;
+    //std::vector<Vector2> texCoords;
+    //std::vector<Vector3> colors;
+    
+    std::vector<uint32_t> indices;
+
+    std::vector<Vertex> vertices;
+
+    float scaleX = 1.0f / m_gridX;
+    float scaleY = 1.0f / m_gridY;
 
     for (int y = 0; y <= m_gridY; y++)
     {
         for (int x = 0; x <= m_gridX; x++)
         {
-            Vector3 bottomLeft = Vector3(x, y, 0);
-            Vector3 bottomRight = Vector3(x + 1, y, 0);
-            Vector3 topLeft = Vector3(x, y + 1, 0);
-            Vector3 topRight = Vector3(x + 1, y + 1, 0);
+            // Using EBO
+            float px = x * scaleX - 0.5f;
+            float py = y * scaleY - 0.5f;
 
-            positions.push_back(topLeft);
-            positions.push_back(bottomLeft);
-            positions.push_back(topRight);
-            positions.push_back(topRight);
-            positions.push_back(bottomLeft);
-            positions.push_back(bottomRight);
+            float lacunarity = 2.0f;
+            float gain = 0.5f;
+            int octaves = 6;
+            float frequency = 2.0f;
+            float amplitude = 1.0f;
+    
+            float pz = amplitude * stb_perlin_fbm_noise3(px * frequency, py * frequency, 0.0f, lacunarity, gain, octaves);
+
+            Vector3 position = Vector3(px, py, pz);
+            Vector2 texCoord = Vector2(x, y);
+            Vector3 color;
+            Vector3 normal = Vector3(0, 0, 0); // Placeholder normal
+
+            if (pz < 0.1f)
+                color = Vector3(1.5f, 0.2f, 3.2f);
+            else if (pz < 0.2f)
+                color = Vector3(0.2f, 1.5f, 0.2f);
+            else if (pz < 0.3f)
+                color = Vector3(0.2f, 0.2f, 1.5f);
+            else
+                color = Vector3(1.5f, 1.5f, 1.5f);
+
+            Vertex vertex = Vertex{position, texCoord, color, normal};
+            vertices.push_back(vertex);
+            
+            //positions.push_back(position);
+            //texCoords.push_back(texCoord);
+            //colors.push_back(color);
+
+            // Using VBO
+            // // Position coordinates
+            // Vector3 V3_bottomLeft = Vector3(x * scaleX - 0.5f, y * scaleY - 0.5f, 0);
+            // Vector3 V3_bottomRight = Vector3((x + 1) * scaleX - 0.5f, y * scaleY - 0.5f, 0);
+            // Vector3 V3_topLeft = Vector3(x * scaleX - 0.5f, (y + 1) * scaleY - 0.5f, 0);
+            // Vector3 V3_topRight = Vector3((x + 1) * scaleX - 0.5f, (y + 1) * scaleY - 0.5f, 0);
+
+            // positions.push_back(V3_topLeft);
+            // positions.push_back(V3_bottomLeft);
+            // positions.push_back(V3_topRight);
+            // positions.push_back(V3_topRight);
+            // positions.push_back(V3_bottomLeft);
+            // positions.push_back(V3_bottomRight);
+
+            // // Texture coordinates
+            // Vector2 V2_bottomLeft = Vector2(0, 0);
+            // Vector2 V2_bottomRight = Vector2(1, 0);
+            // Vector2 V2_topLeft = Vector2(0, 1);
+            // Vector2 V2_topRight = Vector2(1, 1);
+
+            // texCoords.push_back(V2_topLeft);
+            // texCoords.push_back(V2_bottomLeft);
+            // texCoords.push_back(V2_topRight);
+            // texCoords.push_back(V2_topRight);
+            // texCoords.push_back(V2_bottomLeft);
+            // texCoords.push_back(V2_bottomRight);
+
         }
     }
 
+    for (int y = 0; y <= m_gridY; y++)
+    {
+        for (int x = 0; x <= m_gridX; x++)
+        {
+            Vertex currentVertex = vertices[y * (m_gridX + 1) + x];
+            Vertex leftVertex, rightVertex, upVertex, downVertex;
+
+            leftVertex = (x == 0) ? leftVertex = currentVertex : leftVertex = vertices[y * (m_gridX + 1) + x - 1]; 
+            rightVertex = (x == m_gridX) ? rightVertex = currentVertex : rightVertex = vertices[y * (m_gridX + 1) + x + 1];
+            downVertex = (y == 0) ? downVertex = currentVertex : downVertex = vertices[(y - 1) * (m_gridX + 1) + x];
+            upVertex = (y == m_gridY) ? upVertex = currentVertex : upVertex = vertices[(y + 1) * (m_gridX + 1) + x];
+
+            float deltaX = (rightVertex.position.z - leftVertex.position.z) / (rightVertex.position.x - leftVertex.position.x);
+            float deltaY = (upVertex.position.z - downVertex.position.z) / (upVertex.position.y - downVertex.position.y);
+            
+            Vector3 normalVec = Vector3(deltaX, deltaY, 1).Normalize();
+            currentVertex.normal = normalVec;
+            vertices[y * (m_gridX + 1) + x] = currentVertex;
+        }
+    }
+
+
+
+
+    for (int y = 0; y < m_gridY; y++)
+    {
+        for (int x = 0; x < m_gridX; x++)
+        {
+            uint32_t bl = (uint32_t)( y      * (m_gridX + 1) + x     );
+            uint32_t br = (uint32_t)( y      * (m_gridX + 1) + (x+1) );
+            uint32_t tl = (uint32_t)( (y+1)  * (m_gridX + 1) + x     );
+            uint32_t tr = (uint32_t)( (y+1)  * (m_gridX + 1) + (x+1) );
+
+            indices.push_back(tl);
+            indices.push_back(bl);
+            indices.push_back(tr);
+
+            indices.push_back(tr);
+            indices.push_back(bl);
+            indices.push_back(br);
+        }
+    }
+
+    //const size_t posSize = positions.size() * sizeof(Vector3);
+    //const size_t texSize  = texCoords.size() * sizeof(Vector2);
+    //const size_t colSize = colors.size() * sizeof(Vector3);
+    const size_t verSize = vertices.size() * sizeof(Vertex);
+
     VAO.Bind();
     VBO.Bind();
-    VBO.AllocateData<Vector3>(positions);
+
+    //VBO.AllocateData(posSize + texSize + colSize, BufferObject::Usage::StaticDraw);
+    
+    //VBO.UpdateData<Vector3>(positions, 0);
+    //VBO.UpdateData<Vector2>(texCoords, posSize);
+    //VBO.UpdateData<Vector3>(colors, posSize + texSize);
+    
+    VBO.AllocateData(std::as_bytes(std::span(vertices)), BufferObject::Usage::StaticDraw);
+
     VertexAttribute position(Data::Type::Float, 3);
-    VAO.SetAttribute(0, position, 0);
+    VertexAttribute texCoord(Data::Type::Float, 2);
+    VertexAttribute color(Data::Type::Float, 3);
+    VertexAttribute normal(Data::Type::Float, 3);
 
+    size_t vertexSize = sizeof(Vertex);
+    size_t positionOffset = 0;
+    size_t texCoordOffset = positionOffset + position.GetSize();
+    size_t colorOffset = texCoordOffset + texCoord.GetSize();
+    size_t normalOffset = colorOffset + color.GetSize();
 
-    // (todo) 01.5: Initialize EBO
+    VAO.SetAttribute(0, position, positionOffset, vertexSize);
+    VAO.SetAttribute(1, texCoord, texCoordOffset, vertexSize);
+    VAO.SetAttribute(2, color, colorOffset, vertexSize);
+    VAO.SetAttribute(3, normal, normalOffset, vertexSize);
+
+    EBO.Bind();
+    EBO.AllocateData(std::as_bytes(std::span(indices)), BufferObject::Usage::StaticDraw);
 
     VAO.Unbind();
     VBO.Unbind();
-
-
-    // (todo) 01.5: Unbind EBO
+    EBO.Unbind();   
 
 }
 
@@ -94,7 +230,8 @@ void TerrainApplication::Render()
     glUseProgram(m_shaderProgram);
 
     VAO.Bind();
-    glDrawArrays(GL_TRIANGLES, 0, (m_gridX + 1) * (m_gridY + 1));
+    //glDrawArrays(GL_TRIANGLES, 0, 6 * m_gridX * m_gridY);
+    glDrawElements(GL_TRIANGLES, 2 * 3 * m_gridX * m_gridY, GL_UNSIGNED_INT, 0);
 
 }
 
