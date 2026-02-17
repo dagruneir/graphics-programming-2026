@@ -16,16 +16,20 @@ struct Particle
     float size;
     float birth;
     float duration;
+    Color color;
+    glm::vec2 velocity;
 };
 
 // List of attributes of the particle. Must match the structure above
-const std::array<VertexAttribute, 4> s_vertexAttributes =
+const std::array<VertexAttribute, 6> s_vertexAttributes =
 {
     VertexAttribute(Data::Type::Float, 2), // position
     // (todo) 02.X: Add more vertex attributes
     VertexAttribute(Data::Type::Float, 1), // size
     VertexAttribute(Data::Type::Float, 1), // birth
     VertexAttribute(Data::Type::Float, 1), // duration
+    VertexAttribute(Data::Type::Float, 4), // color
+    VertexAttribute(Data::Type::Float, 2), // velocity
 };
 
 
@@ -72,7 +76,9 @@ void ParticlesApplication::Update()
         // (todo) 02.X: Compute new particle attributes here
         float size = ParticlesApplication::RandomRange(10.0f, 20.0f);
         float duration = ParticlesApplication::RandomRange(1.0f, 2.0f);
-        EmitParticle(mousePosition, size, duration);
+        Color color = RandomColor();
+        glm::vec2 velocity = (((mousePosition - m_mousePosition) / GetDeltaTime()) * 0.01f);
+        EmitParticle(mousePosition, size, duration, color, velocity);
     }
 
     // save the mouse position (to compare next frame and obtain velocity)
@@ -93,6 +99,11 @@ void ParticlesApplication::Render()
     m_shaderProgram.SetUniform(currentTimeLocation, time);
 
     // (todo) 02.6: Set Gravity uniform
+    //glm::vec2 gravity = glm::vec2(0.0f, -9.81f); // real gravity
+    glm::vec2 gravity = glm::vec2(0.0f, -1.0f); // less gravity for better visualization
+
+    int gravityLocation = m_shaderProgram.GetUniformLocation("Gravity");
+    m_shaderProgram.SetUniform(gravityLocation, gravity);
 
 
     // Bind the particle system VAO
@@ -149,10 +160,10 @@ void ParticlesApplication::InitializeShaders()
         std::cout << "Error linking shaders" << std::endl;
     }
 
-    
+
 }
 
-void ParticlesApplication::EmitParticle(const glm::vec2& position, float size, float duration)
+void ParticlesApplication::EmitParticle(const glm::vec2& position, float size, float duration, Color color, glm::vec2 velocity)
 {
     // Initialize the particle
     Particle particle;
@@ -161,6 +172,8 @@ void ParticlesApplication::EmitParticle(const glm::vec2& position, float size, f
     particle.size = size;
     particle.birth = GetCurrentTime();
     particle.duration = duration;
+    particle.color = color;
+    particle.velocity = velocity;
 
     // Get the index in the circular buffer
     unsigned int particleIndex = m_particleCount % m_particleCapacity;
