@@ -36,8 +36,29 @@ void GearsApplication::Update()
     const Window& window = GetMainWindow();
 
     // (todo) 03.5: Update the camera matrices
+    int width, height;
+    window.GetDimensions(width, height);
+    float aspectRatio = static_cast<float>(width) / static_cast<float>(height);
+    //m_camera.SetOrthographicProjectionMatrix(glm::vec3(-aspectRatio, -1.0f, -10.0f), glm::vec3(aspectRatio, 1.0f, 10.0f));
+    
+    auto fov = 3.14 / 2.0f;
+    auto near = 0.1f;
+    auto far = 10.0f;
+    
+    m_camera.SetPerspectiveProjectionMatrix(fov, aspectRatio, near, far);
 
+    auto mousePos = window.GetMousePosition(true);
 
+    glm::vec3 positionA = glm::vec3(0.0f, 0.0f, 1.0f);
+    glm::vec3 targetA = glm::vec3(mousePos.x, mousePos.y, 0.0f);
+
+    glm::vec3 positionB = glm::vec3(mousePos.x, mousePos.y, 1.0f);
+    glm::vec3 targetB = glm::vec3(0.0f, 0.0f, 0.0f);
+
+    // fixed camera, move target with mouse
+    //m_camera.SetViewMatrix(positionA, targetA);
+    // fixed target, move camera with mouse
+    m_camera.SetViewMatrix(positionB, targetB);
 }
 
 void GearsApplication::Render()
@@ -49,14 +70,14 @@ void GearsApplication::Render()
     m_shaderProgram.Use();
 
     // (todo) 03.5: Set the view projection matrix from the camera. Once set, we will use it for all the objects
-
+    m_shaderProgram.SetUniform(m_viewProjMatrixUniform, m_camera.GetViewProjectionMatrix());
 
     // (todo) 03.1: Draw large gear at the center
 
     // Rotation
-    float cGangle = 1.0f * GetCurrentTime();
+    float cgAngle = 1.0f * GetCurrentTime();
     glm::vec3 rotationAxis = glm::vec3(0.0f, 0.0f, 1.0f);
-    glm::mat4 centerGearRotationMatrix = glm::rotate(cGangle, rotationAxis);
+    glm::mat4 centerGearRotationMatrix = glm::rotate(cgAngle, rotationAxis);
 
     // Draw center gear
     glm::mat4 centerGearMatrix(centerGearRotationMatrix);
@@ -79,9 +100,36 @@ void GearsApplication::Render()
 
     // (todo) 03.3: Draw small gear at the top-left corner
 
+    // Position
+    glm::vec3 topLeftGearPosition = glm::vec3(-1.0f, 1.0f, 0.0f);
+    glm::mat4 topLeftGearTranslationMatrix = glm::translate(topLeftGearPosition);
+
+    // Scale
+    glm::vec3 topLeftGearScale = glm::vec3(7.5f, 7.5f, 7.5f);
+    glm::mat4 topLeftGearScaleMatrix = glm::scale(topLeftGearScale);
+
+    // Rotation
+    float tlAngle = (-16.0f / 30.0f) * GetCurrentTime();
+    glm::mat4 topLeftGearRotationMatrix = glm::rotate(tlAngle - 0.05f, rotationAxis);
+
+    // Draw top left gear
+    glm::mat4 topLeftGearMatrix = topLeftGearTranslationMatrix * topLeftGearScaleMatrix * topLeftGearRotationMatrix;
+    DrawGear(m_smallGear, topLeftGearMatrix, Color(0.0f, 0.0f, 1.0f));
+
 
     // (todo) 03.4: Draw small gear linked to the center gear
 
+    //Position
+    glm::vec3 smallLinkedGearPosition = glm::vec3(0.0f, 0.2f, 0.0f);
+    glm::mat4 smallLinkedGearTranslationMatrix = glm::translate(smallLinkedGearPosition);
+
+    // Rotation
+    float slAngle = -1.0f * GetCurrentTime();
+    glm::mat4 smallLinkedGearRotationMatrix = glm::rotate(slAngle, rotationAxis);
+
+    // Draw small linked gear
+    glm::mat4 smallLinkedGearMatrix = centerGearMatrix * smallLinkedGearTranslationMatrix * smallLinkedGearRotationMatrix;
+    DrawGear(m_smallGear, smallLinkedGearMatrix, Color(1.0f, 1.0f, 0.0f));
 
     Application::Render();
 }
@@ -117,9 +165,8 @@ void GearsApplication::InitializeShaders()
     // (todo) 03.1: Find the WorldMatrix uniform location
     m_worldMatrixUniform = m_shaderProgram.GetUniformLocation("WorldMatrix");
 
-
     // (todo) 03.5: Find the ViewProjMatrix uniform location
-
+    m_viewProjMatrixUniform = m_shaderProgram.GetUniformLocation("ViewProjMatrix");
 
 }
 
