@@ -66,10 +66,10 @@ void TexturedTerrainApplication::Render()
     GetDevice().Clear(true, Color(0.0f, 0.0f, 0.0f, 1.0f), true, 1.0f);
 
     // Terrain patches
-    DrawObject(m_terrainPatch, *m_defaultMaterial, glm::scale(glm::vec3(10.0f)));
+    DrawObject(m_terrainPatch, *m_terrainMaterial, glm::scale(glm::vec3(10.0f)));
 
     // (todo) 04.2: Add more patches here
-    
+
 
     // Water patches
     // (todo) 04.5: Add water planes
@@ -79,6 +79,7 @@ void TexturedTerrainApplication::Render()
 void TexturedTerrainApplication::InitializeTextures()
 {
     m_defaultTexture = CreateDefaultTexture();
+    m_heightMapTexture = CreateHeightMap(m_gridX, m_gridY, glm::ivec2(0, 0));
 
     // (todo) 04.3: Load terrain textures here
 
@@ -100,8 +101,15 @@ void TexturedTerrainApplication::InitializeMaterials()
     m_defaultMaterial->SetUniformValue("Color", glm::vec4(1.0f));
 
     // (todo) 04.1: Add terrain shader and material here
+    Shader terrainVS = m_vertexShaderLoader.Load("shaders/terrain.vert");
+    Shader terrainFS = m_fragmentShaderLoader.Load("shaders/terrain.frag");
+    std::shared_ptr<ShaderProgram> terrainShaderProgram = std::make_shared<ShaderProgram>();
+    terrainShaderProgram->Build(terrainVS, terrainFS);
 
-
+    // Terrain material
+    m_terrainMaterial = std::make_shared<Material>(terrainShaderProgram);
+    m_terrainMaterial->SetUniformValue("Color", glm::vec4(1.0f));
+    m_terrainMaterial->SetUniformValue("Heightmap", m_heightMapTexture);
 
     // (todo) 04.5: Add water shader and material here
 
@@ -172,6 +180,17 @@ std::shared_ptr<Texture2DObject> TexturedTerrainApplication::CreateHeightMap(uns
         for (unsigned int i = 0; i < width; ++i)
         {
             // (todo) 04.1: Add pixel data
+            float pixel = std::sin(0.1f * i) * 0.1f;
+
+            // From exercise 01
+            float lacunarity = 2.0f;
+            float gain = 0.5f;
+            int octaves = 6;
+            float width = static_cast<float>(i) / static_cast<float>(width - 1);
+            float height = static_cast<float>(j) / static_cast<float>(height - 1);
+
+            float coolPixel = stb_perlin_fbm_noise3(width, height, 0.0f, lacunarity, gain, octaves);
+            pixels.push_back(coolPixel);
         }
     }
 
