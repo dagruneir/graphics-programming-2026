@@ -80,7 +80,18 @@ void TexturedTerrainApplication::Render()
 
     // Water patches
     // (todo) 04.5: Add water planes
+    float waterLevel = -3.0f;
+    DrawObject(m_terrainPatch, *m_waterMaterial,
+    glm::translate(glm::vec3(0.0f, waterLevel, 0.0f)) * glm::scale(glm::vec3(10.0f)));
 
+    DrawObject(m_terrainPatch, *m_waterMaterial,
+    glm::translate(glm::vec3(0.0f, waterLevel, -10.0f)) * glm::scale(glm::vec3(10.0f)));
+
+    DrawObject(m_terrainPatch, *m_waterMaterial,
+    glm::translate(glm::vec3(-10.0f, waterLevel, 0.0f)) * glm::scale(glm::vec3(10.0f)));
+
+    DrawObject(m_terrainPatch, *m_waterMaterial,
+    glm::translate(glm::vec3(-10.0f, waterLevel, -10.0f)) * glm::scale(glm::vec3(10.0f)));
 }
 
 void TexturedTerrainApplication::InitializeTextures()
@@ -99,6 +110,7 @@ void TexturedTerrainApplication::InitializeTextures()
 
 
     // (todo) 04.5: Load water texture here
+    m_waterTexture = LoadTexture("textures/water.png");
 
 }
 
@@ -143,7 +155,18 @@ void TexturedTerrainApplication::InitializeMaterials()
     m_terrainMaterial4->SetUniformValue("Heightmap", m_heightMapTexture4);
 
     // (todo) 04.5: Add water shader and material here
+    Shader waterVS = m_vertexShaderLoader.Load("shaders/water.vert");
+    Shader waterFS = m_fragmentShaderLoader.Load("shaders/water.frag");
+    std::shared_ptr<ShaderProgram> waterShaderProgram = std::make_shared<ShaderProgram>();
+    waterShaderProgram->Build(waterVS, waterFS);
 
+    // Water material
+    m_waterMaterial = std::make_shared<Material>(waterShaderProgram);
+    m_waterMaterial->SetUniformValue("Color", glm::vec4(1.0f, 1.0f, 1.0f, 0.5f));
+    m_waterMaterial->SetUniformValue("ColorTextureScale", glm::vec2(0.1f, 0.1f));
+    m_waterMaterial->SetUniformValue("WaterTexture", m_waterTexture);
+    m_waterMaterial->SetBlendEquation(Material::BlendEquation::Add);
+    m_waterMaterial->SetBlendParams(Material::BlendParam::SourceAlpha, Material::BlendParam::OneMinusSourceAlpha);
 
 }
 
